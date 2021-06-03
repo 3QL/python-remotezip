@@ -74,14 +74,18 @@ class PartialBuffer:
 
 
 class RemoteIO(io.IOBase):
-    def __init__(self, fetch_fun, initial_buffer_size=64*1024):
+    def __init__(self, fetch_fun, initial_buffer_size, minimal_seekable_size):
         self.fetch_fun = fetch_fun
         self.initial_buffer_size = initial_buffer_size
+        self.minimal_seekable_size = minimal_seekable_size
         self.buffer = None
         self.file_size = None
         self.position = None
         self._seek_succeeded = False
         self.member_pos2size = None
+        
+    def seekable():
+        return True
 
     def set_pos2size(self, pos2size):
         self.member_pos2size = pos2size
@@ -95,7 +99,9 @@ class RemoteIO(io.IOBase):
                 fetch_size = size
                 stream = False
             else:
-                fetch_size = self.member_pos2size[self.buffer.position]
+                fetch_size = self.member_pos2size.get(self.buffer.position) or max(size, self.minimal_seekable_size)
+                if fetch_size + self.buffer.position > self.file_size:
+                    fetch_size = self.file_size - self.buffer.position
                 stream = True
 
             self._seek_succeeded = True
@@ -128,11 +134,11 @@ class RemoteIO(io.IOBase):
 
 
 class RemoteZip(zipfile.ZipFile):
-    def __init__(self, url, initial_buffer_size=64*1024, **kwargs):
+    def __init__(self, url, initial_buffer_size=64*1024, minimal_seekable_size=64*1024 **kwargs):
         self.kwargs = kwargs
         self.url = url
 
-        rio = RemoteIO(self.fetch_fun, initial_buffer_size)
+        rio = RemoteIO(self.fetch_fun, initial_buffer_size, minimal_seekable_size)
         super(RemoteZip, self).__init__(rio)
         rio.set_pos2size(self.get_position2size())
 
