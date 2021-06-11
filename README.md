@@ -23,7 +23,7 @@ To download the content, this library rely on the `requests` module. The constru
 * **verify**: enable/disable certificate verification or set custom certificates location.
 * ... Please look at the [requests](http://docs.python-requests.org/en/master/user/quickstart/#make-a-request) documentation for futher usage details.
 * **initial\_buffer\_size**: How much data (in bytes) to fetch during the first connection to download the zip file central directory. If your zip file conteins a lot of files, would be a good idea to increase this parameter in order to avoid the need for further remote requests. *Default: 64kb*.
-
+* **minimal\_seekable\_size**: How much data (in bytes) to fetch minimal when seekable is used
 ### Class Interface
 
 `RemoteZip` is a subclass of the python standard library class `zipfile.ZipFile`, so it supports all its read methods:
@@ -91,6 +91,19 @@ url = "https://s3-eu-west-1.amazonaws.com/.../file.zip"
 with RemoteZip(url, auth=auth, headers=headers) as z: 
     zip.extract('somefile.txt')
 ```
+#### Seekable example
+
+If you only need some bytes of a file within a zipfile, seekable can be used. For example a tar.zip file to get one file from the tar.
+
+```python
+from remotezip import RemoteZip
+import tarfile
+with RemoteZip('http://.../myfile.tar.zip') as zip:
+    with tarfile.open(fileobj=zip) as tar:
+	    tar.extract(1)
+		
+```
+
 
 ## Command line tool
 
@@ -138,6 +151,7 @@ How many requests will this module perform to download a member?
 * If the full archive content is smaller than **initial\_buffer\_size**, only one request will be needed.
 * Normally two requests are needed, one to download the central directory and one to download the archive member.
 * If the central directory is bigger than **initial\_buffer\_size**, a third request will be required.
+* If seekable is used, more requests may be required, **minimal\_seekable\_size** gets per request at least.
 
 ## Alternative modules
 
